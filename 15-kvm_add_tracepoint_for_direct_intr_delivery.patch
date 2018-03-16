@@ -1,0 +1,53 @@
+diff --git a/arch/x86/kvm/trace.h b/arch/x86/kvm/trace.h
+index a71faf7..6081be7 100644
+--- a/arch/x86/kvm/trace.h
++++ b/arch/x86/kvm/trace.h
+@@ -551,6 +551,24 @@ TRACE_EVENT(kvm_pv_eoi,
+ 	TP_printk("apicid %x vector %d", __entry->apicid, __entry->vector)
+ );
+ 
++TRACE_EVENT(kvm_set_direct_interrupt,
++	TP_PROTO(struct kvm_vcpu *vcpu, bool enabled),
++	TP_ARGS(vcpu, enabled),
++
++	TP_STRUCT__entry(
++		__field(	unsigned long,	guest_rip	)
++		__field(	bool,	        enabled         )
++	),
++
++	TP_fast_assign(
++		__entry->guest_rip	= kvm_rip_read(vcpu);
++		__entry->enabled        = enabled;
++	),
++
++	TP_printk("rip 0x%lx enabled %d",
++		 __entry->guest_rip, __entry->enabled)
++);
++
+ /*
+  * Tracepoint for nested VMRUN
+  */
+diff --git a/arch/x86/kvm/vmx.c b/arch/x86/kvm/vmx.c
+index 605abea..6dc59c8 100644
+--- a/arch/x86/kvm/vmx.c
++++ b/arch/x86/kvm/vmx.c
+@@ -1719,6 +1719,8 @@ static void vmx_set_direct_interrupt(struct kvm_vcpu *vcpu, bool enabled)
+ 	else
+ 		vmcs_set_bits(PIN_BASED_VM_EXEC_CONTROL,
+ 			      PIN_BASED_EXT_INTR_MASK);
++
++	trace_kvm_set_direct_interrupt(vcpu, enabled);
+ }
+ 
+ static void vmx_set_slave_mode(struct kvm_vcpu *vcpu, bool slave)
+diff --git a/arch/x86/kvm/x86.c b/arch/x86/kvm/x86.c
+index b7d28df..1449187 100644
+--- a/arch/x86/kvm/x86.c
++++ b/arch/x86/kvm/x86.c
+@@ -6936,3 +6936,4 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(kvm_nested_intr_vmexit);
+ EXPORT_TRACEPOINT_SYMBOL_GPL(kvm_invlpga);
+ EXPORT_TRACEPOINT_SYMBOL_GPL(kvm_skinit);
+ EXPORT_TRACEPOINT_SYMBOL_GPL(kvm_nested_intercepts);
++EXPORT_TRACEPOINT_SYMBOL_GPL(kvm_set_direct_interrupt);
+
+  

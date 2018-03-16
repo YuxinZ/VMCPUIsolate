@@ -1,0 +1,67 @@
+diff --git a/arch/x86/include/asm/vmx.h b/arch/x86/include/asm/vmx.h
+index 74fcb96..6899aaa 100644
+--- a/arch/x86/include/asm/vmx.h
++++ b/arch/x86/include/asm/vmx.h
+@@ -66,6 +66,7 @@
+ #define PIN_BASED_EXT_INTR_MASK                 0x00000001
+ #define PIN_BASED_NMI_EXITING                   0x00000008
+ #define PIN_BASED_VIRTUAL_NMIS                  0x00000020
++#define PIN_BASED_PREEMPTION_TIMER              0x00000040
+ 
+ #define VM_EXIT_SAVE_DEBUG_CONTROLS             0x00000002
+ #define VM_EXIT_HOST_ADDR_SPACE_SIZE            0x00000200
+@@ -196,6 +197,7 @@ enum vmcs_field {
+ 	GUEST_INTERRUPTIBILITY_INFO     = 0x00004824,
+ 	GUEST_ACTIVITY_STATE            = 0X00004826,
+ 	GUEST_SYSENTER_CS               = 0x0000482A,
++	VMX_PREEMPTION_TIMER_VALUE      = 0x0000482E,
+ 	HOST_IA32_SYSENTER_CS           = 0x00004c00,
+ 	CR0_GUEST_HOST_MASK             = 0x00006000,
+ 	CR4_GUEST_HOST_MASK             = 0x00006002,
+@@ -280,6 +282,7 @@ enum vmcs_field {
+ #define EXIT_REASON_APIC_ACCESS         44
+ #define EXIT_REASON_EPT_VIOLATION       48
+ #define EXIT_REASON_EPT_MISCONFIG       49
++#define EXIT_REASON_PREEMPTION_TIMER	52
+ #define EXIT_REASON_WBINVD		54
+ #define EXIT_REASON_XSETBV		55
+ #define EXIT_REASON_INVPCID		58
+diff --git a/arch/x86/kvm/trace.h b/arch/x86/kvm/trace.h
+index 6081be7..fc350f3 100644
+--- a/arch/x86/kvm/trace.h
++++ b/arch/x86/kvm/trace.h
+@@ -218,6 +218,7 @@ TRACE_EVENT(kvm_apic,
+ 	{ EXIT_REASON_APIC_ACCESS,		"APIC_ACCESS" }, \
+ 	{ EXIT_REASON_EPT_VIOLATION,		"EPT_VIOLATION" }, \
+ 	{ EXIT_REASON_EPT_MISCONFIG,		"EPT_MISCONFIG" }, \
++	{ EXIT_REASON_PREEMPTION_TIMER,		"PREEMPTION_TIMER" }, \
+ 	{ EXIT_REASON_WBINVD,			"WBINVD" }
+ 
+ #define SVM_EXIT_REASONS \
+diff --git a/arch/x86/kvm/vmx.c b/arch/x86/kvm/vmx.c
+index 6dc59c8..2130cbd 100644
+--- a/arch/x86/kvm/vmx.c
++++ b/arch/x86/kvm/vmx.c
+@@ -4456,6 +4456,12 @@ static int handle_external_interrupt(struct kvm_vcpu *vcpu)
+ 	return 1;
+ }
+ 
++static int handle_preemption_timer(struct kvm_vcpu *vcpu)
++{
++	/* Nothing */
++	return 1;
++}
++
+ static int handle_triple_fault(struct kvm_vcpu *vcpu)
+ {
+ 	vcpu->run->exit_reason = KVM_EXIT_SHUTDOWN;
+@@ -5768,6 +5774,7 @@ static int (*kvm_vmx_exit_handlers[])(struct kvm_vcpu *vcpu) = {
+ 	[EXIT_REASON_VMON]                    = handle_vmon,
+ 	[EXIT_REASON_TPR_BELOW_THRESHOLD]     = handle_tpr_below_threshold,
+ 	[EXIT_REASON_APIC_ACCESS]             = handle_apic_access,
++	[EXIT_REASON_PREEMPTION_TIMER]        = handle_preemption_timer,
+ 	[EXIT_REASON_WBINVD]                  = handle_wbinvd,
+ 	[EXIT_REASON_XSETBV]                  = handle_xsetbv,
+ 	[EXIT_REASON_TASK_SWITCH]             = handle_task_switch,
+
+  

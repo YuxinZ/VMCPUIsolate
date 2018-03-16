@@ -1,0 +1,43 @@
+diff --git a/arch/x86/include/asm/kvm_host.h b/arch/x86/include/asm/kvm_host.h
+index 0ea04c9..af68ffb 100644
+--- a/arch/x86/include/asm/kvm_host.h
++++ b/arch/x86/include/asm/kvm_host.h
+@@ -358,6 +358,7 @@ struct kvm_vcpu_arch {
+ 	int sipi_vector;
+ 	u64 ia32_misc_enable_msr;
+ 	bool tpr_access_reporting;
++	bool interrupted;
+ 
+ #ifdef CONFIG_SLAVE_CPU
+ 	/* slave cpu dedicated to this vcpu */
+diff --git a/arch/x86/kvm/vmx.c b/arch/x86/kvm/vmx.c
+index 7bbfa01..d99bee6 100644
+--- a/arch/x86/kvm/vmx.c
++++ b/arch/x86/kvm/vmx.c
+@@ -4408,6 +4408,7 @@ static int handle_exception(struct kvm_vcpu *vcpu)
+ 
+ static int handle_external_interrupt(struct kvm_vcpu *vcpu)
+ {
++	vcpu->arch.interrupted = true;
+ 	++vcpu->stat.irq_exits;
+ 	return 1;
+ }
+diff --git a/arch/x86/kvm/x86.c b/arch/x86/kvm/x86.c
+index b62f59c..db0be81 100644
+--- a/arch/x86/kvm/x86.c
++++ b/arch/x86/kvm/x86.c
+@@ -5566,6 +5566,12 @@ static void __vcpu_enter_guest_slave(void *_arg)
+ 			break;
+ 
+ 		/* determine if slave cpu can handle the exit alone */
++		if (vcpu->arch.interrupted) {
++			vcpu->arch.interrupted = false;
++			arg->ret = LOOP_ONLINE;
++			break;
++		}
++
+ 		r = vcpu_post_run(vcpu, arg->task, &arg->apf_pending);
+ 
+ 		if (r == LOOP_SLAVE &&
+
+  
